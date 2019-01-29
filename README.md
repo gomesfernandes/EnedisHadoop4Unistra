@@ -3,8 +3,7 @@
 University of Strasbourg, M2 ILC 2019
 
 Developers :
-GOMES FERNANDES Caty
-HARTMEYER Vincent
+GOMES FERNANDES Caty, HARTMEYER Vincent
 
 
 ### Compile and Run
