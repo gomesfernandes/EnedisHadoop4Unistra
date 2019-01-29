@@ -12,14 +12,45 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class Enedis {
 
-    public static class Mapper1 extends Mapper<LongWritable, Text, Text, Text>{
+    public static class PerDepartmentMapper extends Mapper<LongWritable, Text, Text, Text>{
         /**
-         *
+         * Par line, calculate the average consumption per site for each of the 6 sectors.
          */
         public void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
-            String[] values = value.toString().split(",");
-            context.write(new Text(values[0]), new Text(values[1]));
+            String[] cols = value.toString().split(";");
+            String year = cols[0];
+            String departement = cols[7];
+
+            Float avg_residence = Float.parseFloat(cols[12]);
+
+            Float avg_pro = Float.parseFloat(cols[15]);
+
+            Float nb_agriculture = Float.parseFloat(cols[16]);
+            Float total_agriculture = Float.parseFloat(cols[17]);
+            Float avg_agriculture = total_agriculture / nb_agriculture ;
+
+            Float nb_industry = Float.parseFloat(cols[18]);
+            Float total_industry = Float.parseFloat(cols[19]);
+            Float avg_industry = total_industry / nb_industry ;
+
+            Float nb_tertiary = Float.parseFloat(cols[20]);
+            Float total_tertiary = Float.parseFloat(cols[21]);
+            Float avg_tertiary = total_tertiary / nb_tertiary ;
+
+            Float nb_other = Float.parseFloat(cols[22]);
+            Float total_other = Float.parseFloat(cols[23]);
+            Float avg_other = total_other / nb_other ;
+
+            StringBuilder output_value = new StringBuilder();
+            output_value.append(avg_residence+";");
+            output_value.append(avg_pro+";");
+            output_value.append(avg_agriculture+";");
+            output_value.append(avg_industry+";");
+            output_value.append(avg_tertiary+";");
+            output_value.append(avg_other+";");
+
+            context.write(new Text(departement), new Text(output_value.toString()));
         }
     }
 
@@ -69,7 +100,7 @@ public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
         job1.setJarByClass(Enedis.class);
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
-        job1.setMapperClass(Mapper1.class);
+        job1.setMapperClass(PerDepartmentMapper.class);
         job1.setReducerClass(Reducer1.class);
 
         job1.setInputFormatClass(TextInputFormat.class);
