@@ -10,33 +10,33 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
-public class DegreSommets {
+public class Enedis {
 
-    public static class CoupleToNodeMapper extends Mapper<LongWritable, Text, Text, Text>{
+    public static class Mapper1 extends Mapper<LongWritable, Text, Text, Text>{
         /**
          *
          */
-        public void map(LongWritable key, Text value, Context context
-        ) throws IOException, InterruptedException {
-            continue
+        public void map(LongWritable key, Text value, Context context)
+                throws IOException, InterruptedException {
+            String[] values = value.toString().split(",");
+            context.write(new Text(values[0]), new Text(values[1]));
         }
     }
 
-    public static class CoupleDegreeReducer extends Reducer<Text,Text,Text,Text> {
+    public static class Reducer1 extends Reducer<Text,Text,Text,Text> {
 
-        private Text result = new Text();
         /**
          *
          */
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
-            continue
+            context.write(key, new Text("empty run"));
         }
     }
-}
 
-public static class IDMapper extends Mapper<LongWritable, Text, Text, Text>{
+/*
+public static class Mapper2 extends Mapper<LongWritable, Text, Text, Text>{
 
     public void map(LongWritable key, Text value, Context context)
             throws IOException, InterruptedException {
@@ -45,7 +45,7 @@ public static class IDMapper extends Mapper<LongWritable, Text, Text, Text>{
 
 }
 
-public static class FinalReducer extends Reducer<Text,Text,Text,Text> {
+public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
 
     public void reduce(Text key, Iterable<Text> values,
                        Context context
@@ -54,6 +54,7 @@ public static class FinalReducer extends Reducer<Text,Text,Text,Text> {
         continue
     }
 }
+*/
 
     public static void main(String[] args) throws Exception {
 
@@ -65,11 +66,11 @@ public static class FinalReducer extends Reducer<Text,Text,Text,Text> {
         Configuration conf = new Configuration();
 
         Job job1 = new Job(conf, "FirstRun");
-        job1.setJarByClass(DegreSommets.class);
+        job1.setJarByClass(Enedis.class);
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
-        job1.setMapperClass(CoupleToNodeMapper.class);
-        job1.setReducerClass(CoupleDegreeReducer.class);
+        job1.setMapperClass(Mapper1.class);
+        job1.setReducerClass(Reducer1.class);
 
         job1.setInputFormatClass(TextInputFormat.class);
         job1.setOutputFormatClass(TextOutputFormat.class);
@@ -85,11 +86,11 @@ public static class FinalReducer extends Reducer<Text,Text,Text,Text> {
 
         /*
         Job job2 = new Job(conf, "SecondRun");
-        job2.setJarByClass(DegreSommets.class);
+        job2.setJarByClass(Enedis.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(Text.class);
-        job2.setMapperClass(IDMapper.class);
-        job2.setReducerClass(FinalReducer.class);
+        job2.setMapperClass(Mapper2.class);
+        job2.setReducerClass(Reducer2.class);
 
         job2.setInputFormatClass(TextInputFormat.class);
         job2.setOutputFormatClass(TextOutputFormat.class);
