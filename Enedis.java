@@ -12,6 +12,50 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class Enedis {
 
+    public static String[] SECTORLABELS = {"Residentiel",
+                                            "Professionnel",
+                                            "Agriculture",
+                                            "Industrie",
+                                            "Tertiaire",
+                                            "Autres"};
+
+    public static String getMaxSector(Float[] avgs) {
+        int maxIndex = 0;
+        for (int i = 1; i < avgs.length; i++) {
+            Float newnumber = avgs[i];
+            if ((newnumber > avgs[maxIndex])) {
+                maxIndex = i;
+            }
+        }
+        return SECTORLABELS[maxIndex];
+    }
+
+    public static Float[] extractSectorAvgs(String[] cols) {
+        Float avg_residence = Float.parseFloat(cols[12]);
+
+        Float avg_pro = Float.parseFloat(cols[15]);
+
+        Float nb_agriculture = Float.parseFloat(cols[16]);
+        Float total_agriculture = Float.parseFloat(cols[17]);
+        Float avg_agriculture = total_agriculture / nb_agriculture ;
+
+        Float nb_industry = Float.parseFloat(cols[18]);
+        Float total_industry = Float.parseFloat(cols[19]);
+        Float avg_industry = total_industry / nb_industry ;
+
+        Float nb_tertiary = Float.parseFloat(cols[20]);
+        Float total_tertiary = Float.parseFloat(cols[21]);
+        Float avg_tertiary = total_tertiary / nb_tertiary ;
+
+        Float nb_other = Float.parseFloat(cols[22]);
+        Float total_other = Float.parseFloat(cols[23]);
+        Float avg_other = total_other / nb_other ;
+
+        Float[] avgs = {avg_residence, avg_pro, avg_agriculture, avg_industry, avg_tertiary, avg_other};
+
+        return avgs;
+    }
+
     public static class PerDepartmentMapper extends Mapper<LongWritable, Text, Text, Text>{
         /**
          * Par line, calculate the average consumption per site for each of the 6 sectors.
@@ -22,35 +66,11 @@ public class Enedis {
             String year = cols[0];
             String departement = cols[7];
 
-            Float avg_residence = Float.parseFloat(cols[12]);
+            Float[] avgs = extractSectorAvgs(cols);
 
-            Float avg_pro = Float.parseFloat(cols[15]);
+            String max_sector = getMaxSector(avgs);
 
-            Float nb_agriculture = Float.parseFloat(cols[16]);
-            Float total_agriculture = Float.parseFloat(cols[17]);
-            Float avg_agriculture = total_agriculture / nb_agriculture ;
-
-            Float nb_industry = Float.parseFloat(cols[18]);
-            Float total_industry = Float.parseFloat(cols[19]);
-            Float avg_industry = total_industry / nb_industry ;
-
-            Float nb_tertiary = Float.parseFloat(cols[20]);
-            Float total_tertiary = Float.parseFloat(cols[21]);
-            Float avg_tertiary = total_tertiary / nb_tertiary ;
-
-            Float nb_other = Float.parseFloat(cols[22]);
-            Float total_other = Float.parseFloat(cols[23]);
-            Float avg_other = total_other / nb_other ;
-
-            StringBuilder output_value = new StringBuilder();
-            output_value.append(avg_residence+";");
-            output_value.append(avg_pro+";");
-            output_value.append(avg_agriculture+";");
-            output_value.append(avg_industry+";");
-            output_value.append(avg_tertiary+";");
-            output_value.append(avg_other+";");
-
-            context.write(new Text(departement), new Text(output_value.toString()));
+            context.write(new Text(departement), new Text(max_sector));
         }
     }
 
