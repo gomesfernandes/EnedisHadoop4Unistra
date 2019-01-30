@@ -75,7 +75,7 @@ public class Enedis {
         }
     }
 
-    public static class Reducer1 extends Reducer<Text,Text,Text,Text> {
+    public static class PerSectorCountReducer extends Reducer<Text,Text,Text,Text> {
 
         /**
          * Per department and per sector, return the number of communes for which the sector consumed the most.
@@ -110,26 +110,48 @@ public class Enedis {
         }
     }
 
-/*
-public static class Mapper2 extends Mapper<LongWritable, Text, Text, Text>{
 
-    public void map(LongWritable key, Text value, Context context)
-            throws IOException, InterruptedException {
-        continue
+    public static class ExtractMaxSectorMapper extends Mapper<LongWritable, Text, Text, Text>{
+
+        public void map(LongWritable key, Text value, Context context)
+                throws IOException, InterruptedException {
+            String department = value.toString().split("\t")[0];
+            String counts = value.toString().split("\t")[1];
+            String[] sector_counts = counts.split(",");
+
+            Integer max = 0;
+            String maxSector = "";
+
+            for (String entry : sector_counts) {
+                String sector = entry.split(":")[0];
+                Integer count = Integer.parseInt(entry.split(":")[1]);
+                if (count > max) {
+                    max = count;
+                    maxSector = sector;
+                }
+            }
+
+            StringBuilder output_value = new StringBuilder();
+            output_value.append(department);
+            output_value.append(":");
+            output_value.append(max.toString());
+
+            context.write(new Text(maxSector), new Text(output_value.toString()));
+        }
+
     }
 
-}
+    /*
+    public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
 
-public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
+        public void reduce(Text key, Iterable<Text> values,
+                           Context context
+        ) throws IOException, InterruptedException {
 
-    public void reduce(Text key, Iterable<Text> values,
-                       Context context
-    ) throws IOException, InterruptedException {
-
-        continue
+            continue
+        }
     }
-}
-*/
+    */
 
     public static void main(String[] args) throws Exception {
 
@@ -145,7 +167,7 @@ public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
         job1.setMapperClass(PerDepartmentMapper.class);
-        job1.setReducerClass(Reducer1.class);
+        job1.setReducerClass(PerSectorCountReducer.class);
 
         job1.setInputFormatClass(TextInputFormat.class);
         job1.setOutputFormatClass(TextOutputFormat.class);
@@ -164,7 +186,7 @@ public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
         job2.setJarByClass(Enedis.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(Text.class);
-        job2.setMapperClass(Mapper2.class);
+        job2.setMapperClass(ExtractMaxSectorMapper.class);
         job2.setReducerClass(Reducer2.class);
 
         job2.setInputFormatClass(TextInputFormat.class);
