@@ -58,7 +58,8 @@ public class Enedis {
 
     public static class PerDepartmentMapper extends Mapper<LongWritable, Text, Text, Text>{
         /**
-         * Par line, calculate the average consumption per site for each of the 6 sectors.
+         * Per line, calculate the average consumption per site for each of the 6 sectors.
+         * Return the name of the sector with the biggest consumption.
          */
         public void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
@@ -77,12 +78,35 @@ public class Enedis {
     public static class Reducer1 extends Reducer<Text,Text,Text,Text> {
 
         /**
-         *
+         * Per department and per sector, return the number of communes for which the sector consumed the most.
          */
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
-            context.write(key, new Text("empty run"));
+            Map<String,Integer> count_per_sector = new HashMap<String,Integer>();
+
+            for (int i=0; i < SECTORLABELS.length ; i++)
+                count_per_sector.put(SECTORLABELS[i],0);
+
+            for (Text sector : values) {
+                Integer oldvalue = count_per_sector.get(sector.toString());
+                count_per_sector.put(sector.toString(),oldvalue + 1);
+            }
+
+            StringBuilder output_value = new StringBuilder();
+            output_value.append("");
+            String sector = new String();
+
+            for (int i=0; i < SECTORLABELS.length ; i++) {
+                sector = SECTORLABELS[i];
+                output_value.append(sector);
+                output_value.append(":");
+                output_value.append(count_per_sector.get(sector));
+                if (i!=SECTORLABELS.length-1)
+                    output_value.append(",");
+            }
+
+            context.write(key, new Text(output_value.toString()));
         }
     }
 
