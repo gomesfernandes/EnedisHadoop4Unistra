@@ -36,6 +36,12 @@ public class Enedis {
             "Conso modérée",
             "Conso élevée"};
 
+    public static String[] HEATINGLABLES =
+            {"Taux chauffage électr. très bas",
+            "Taux chauffage électr. bas",
+            "Taux chauffage électr. moyen",
+            "Taux chauffage électr. élevé"};
+
     public static final double EPSILON = 0.01;
 
     public static Float global_min_conso = Float.MAX_VALUE;
@@ -98,7 +104,7 @@ public class Enedis {
         }
     }
 
-    public static class PerDepartmentMapper extends Mapper<LongWritable, Text, Text, Text>{
+    public static class Mapper1 extends Mapper<LongWritable, Text, Text, Text>{
         /**
          */
         public void map(LongWritable key, Text value, Context context)
@@ -126,7 +132,7 @@ public class Enedis {
         }
     }
 
-    public static class Reduce2 extends Reducer<Text,Text,Text,Text> {
+    public static class Reduce1 extends Reducer<Text,Text,Text,Text> {
 
         public void reduce(Text key, Iterable<Text> values,
                            Context context
@@ -161,10 +167,10 @@ public class Enedis {
                 global_min_conso = avg;
             }
             if (heating > global_max_heating) {
-                global_max_conso = heating;
+                global_max_heating = heating;
             }
             if (heating < global_min_heating) {
-                global_min_conso = heating;
+                global_min_heating = heating;
             }
 
             StringBuilder output = new StringBuilder();
@@ -178,7 +184,10 @@ public class Enedis {
         }
     }
 
-    public static String trancheConsommation(Float conso) {
+    public static String categoriseByConsoRange(Float conso) {
+        System.out.println("global_max_conso: "+global_max_conso);
+        System.out.println("global_min_conso: "+global_min_conso);
+        System.out.println("conso: "+conso);
         Float middle = (global_max_conso-global_min_conso)/2;
         Float quarter = (middle-global_min_conso)/2;
         Float three_quarter = (global_max_conso-quarter);
@@ -193,14 +202,41 @@ public class Enedis {
             return CONSOLABLES[3];
     }
 
+    public static String categoriseByHeatingRange(Float heating) {
+        Float middle = (global_max_heating-global_min_heating)/2;
+        Float quarter = (middle-global_min_heating)/2;
+        Float three_quarter = (global_max_heating-quarter);
+
+        if (heating < quarter)
+            return HEATINGLABLES[0];
+        else if (heating < middle)
+            return HEATINGLABLES[1];
+        else if (heating < three_quarter)
+            return HEATINGLABLES[2];
+        else
+            return HEATINGLABLES[3];
+    }
+
     public static class Mapper2 extends Mapper<LongWritable, Text, Text, Text>{
 
         public void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
+            Float conso = Float.parseFloat(value.toString().split("\t")[0]);
+            String[] values = value.toString().split("\t")[1].split(":");
 
-            String tranche = trancheConsommation(Float.parseFloat(value.toString().split("\t")[0]));
+            String conso_category = categoriseByConsoRange(conso);
+            String heating_category = categoriseByHeatingRange(Float.parseFloat(values[2]));
 
-            context.write(new Text(tranche),new Text(value.toString().split("\t")[1] ));
+            StringBuilder output = new StringBuilder();
+            output.append(values[0]);
+            output.append(":");
+            output.append(values[1]);
+            output.append(":");
+            output.append(heating_category);
+
+            System.out.println("conso_category : "+conso_category);
+
+            context.write(new Text(conso_category),new Text(output.toString()));
         }
 
     }
@@ -228,8 +264,8 @@ public class Enedis {
         job1.setJarByClass(Enedis.class);
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
-        job1.setMapperClass(PerDepartmentMapper.class);
-        job1.setReducerClass(Reduce2.class);
+        job1.setMapperClass(Mapper1.class);
+        job1.setReducerClass(Reduce1.class);
 
         job1.setInputFormatClass(TextInputFormat.class);
         job1.setOutputFormatClass(TextOutputFormat.class);
