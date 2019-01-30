@@ -91,7 +91,7 @@ public class Enedis {
 
         Float medium_residence_percentage = Float.parseFloat(cols[35]) + Float.parseFloat(cols[36]);
 
-        Float new_residence_percentage = Float.parseFloat(cols[37]) + Float.parseFloat(cols[38]);
+        Float new_residence_percentage = Float.parseFloat(cols[37]) + Float.parseFloat(cols[38]) + Float.parseFloat(cols[39]);
 
         Float max = Math.max(old_residence_percentage, Math.max(medium_residence_percentage,new_residence_percentage));
 
@@ -185,9 +185,6 @@ public class Enedis {
     }
 
     public static String categoriseByConsoRange(Float conso) {
-        System.out.println("global_max_conso: "+global_max_conso);
-        System.out.println("global_min_conso: "+global_min_conso);
-        System.out.println("conso: "+conso);
         Float middle = (global_max_conso-global_min_conso)/2;
         Float quarter = (middle-global_min_conso)/2;
         Float three_quarter = (global_max_conso-quarter);
@@ -233,8 +230,6 @@ public class Enedis {
             output.append(values[1]);
             output.append(":");
             output.append(heating_category);
-
-            System.out.println("conso_category : "+conso_category);
 
             context.write(new Text(conso_category),new Text(output.toString()));
         }
