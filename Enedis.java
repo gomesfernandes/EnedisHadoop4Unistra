@@ -241,13 +241,50 @@ public class Enedis {
 
     }
 
+    public static String getMaxCategory(Map<String, Integer> map){
+        Map.Entry<String, Integer> maxEntry = null;
+        Integer max = Collections.max(map.values());
+
+        for(Map.Entry<String, Integer> entry : map.entrySet()) {
+            Integer value = entry.getValue();
+            if(null != value && max == value) {
+                maxEntry = entry;
+            }
+        }
+        return maxEntry.getKey();
+    }
+
     public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
 
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
 
-            context.write(key,new Text("ok"));
+            Map<String,Integer> surface_map = new HashMap<String, Integer>();
+            Map<String,Integer> residence_map = new HashMap<String, Integer>();
+            Map<String,Integer> heating_map = new HashMap<String, Integer>();
+            int i;
+            for(i=0; i<SURFACELABELS.length; i++)
+                surface_map.put(SURFACELABELS[i],0);
+
+            for(i=0; i<RESIDENCYLABELS.length; i++)
+                residence_map.put(RESIDENCYLABELS[i],0);
+
+            for(i=0; i<HEATINGLABLES.length; i++)
+                heating_map.put(HEATINGLABLES[i],0);
+
+            for (Text entry : values){
+                String[] value = entry.toString().split(":");
+                surface_map.put(value[0],surface_map.get(value[0]) + 1);
+                residence_map.put(value[1],residence_map.get(value[1]) + 1);
+                heating_map.put(value[2],heating_map.get(value[2]) + 1);
+            }
+
+            String max_surface_categ = getMaxCategory(surface_map);
+            String max_residence_categ = getMaxCategory(residence_map);
+            String max_heating_categ = getMaxCategory(heating_map);
+
+            context.write(key,new Text(max_surface_categ+","+max_residence_categ+","+max_heating_categ));
         }
     }
 
