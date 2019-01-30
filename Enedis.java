@@ -141,17 +141,15 @@ public class Enedis {
 
     }
 
-    /*
     public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
 
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
 
-            continue
+            context.write(key,new Text("no text yet"));
         }
     }
-    */
 
     public static void main(String[] args) throws Exception {
 
@@ -181,7 +179,6 @@ public class Enedis {
         System.out.println("END OF FIRST JOB");
         System.out.println("----------------------------------------------");
 
-        /*
         Job job2 = new Job(conf, "SecondRun");
         job2.setJarByClass(Enedis.class);
         job2.setOutputKeyClass(Text.class);
@@ -199,7 +196,6 @@ public class Enedis {
         FileOutputFormat.setOutputPath(job2, new Path(outfinal));
 
         job2.waitForCompletion(true);
-        */
 
     }
 
