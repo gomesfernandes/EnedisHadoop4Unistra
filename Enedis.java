@@ -141,13 +141,30 @@ public class Enedis {
 
     }
 
-    public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
+    public static class ParSectorDepartmentWithMaxCountReducer extends Reducer<Text,Text,Text,Text> {
 
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
+            Integer max = 0;
+            String max_dpt = "";
 
-            context.write(key,new Text("no text yet"));
+            for (Text val : values) {
+                String department = val.toString().split(":")[0];
+                Integer count = Integer.parseInt(val.toString().split(":")[1]);
+                if (count > max) {
+                    max = count;
+                    max_dpt = department;
+                }
+            }
+
+            StringBuilder output_value = new StringBuilder();
+            output_value.append(max_dpt);
+            output_value.append(" (");
+            output_value.append(max.toString());
+            output_value.append(" communes)");
+
+            context.write(key,new Text(output_value.toString()));
         }
     }
 
@@ -184,7 +201,7 @@ public class Enedis {
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(Text.class);
         job2.setMapperClass(ExtractMaxSectorMapper.class);
-        job2.setReducerClass(Reducer2.class);
+        job2.setReducerClass(ParSectorDepartmentWithMaxCountReducer.class);
 
         job2.setInputFormatClass(TextInputFormat.class);
         job2.setOutputFormatClass(TextOutputFormat.class);
