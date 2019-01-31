@@ -60,14 +60,35 @@ public class Enedis {
         return SECTORLABELS[maxIndex];
     }
 
+    /**
+     * Calculate the sum of the values for "Superficie des logements 80 à 100 m2" and
+     * "Superficie des logements > 100 m2".
+     *
+     * @param cols: one line from the dataset, split into a list of Strings
+     * @return percentage of apartments with a surface > 80 m2
+     */
     public static Float extractLargeSurfacePercentage(String[] cols) {
         return Float.parseFloat(cols[31]) + Float.parseFloat(cols[32]);
     }
 
+    /**
+     * Calculate the sum of the values for "Résidences principales avant 1919" and
+     * "Résidences principales de 1919 à 1945".
+     *
+     * @param cols: one line from the dataset, split into a list of Strings
+     * @return percentage of residencies build before 1945
+     */
     public static Float extractOldResidencePercentage(String[] cols) {
         return Float.parseFloat(cols[33]) + Float.parseFloat(cols[34]);
     }
 
+     /**
+     * Calculate the percentage of apartments with < 40 m2 , between 40 and 80 m2, and over 80 m2.
+     * Return the label for the interval with the largest percentage.
+     *
+     * @param cols: one line from the dataset, split into a list of Strings
+     * @return label of the surface size with max percentage
+     */
     public static String extractSurfaceWithMaxPercentages(String[] cols) {
         Float small_surface_percentage = Float.parseFloat(cols[27]) + Float.parseFloat(cols[28]);
 
@@ -86,6 +107,13 @@ public class Enedis {
         }
     }
 
+    /**
+     * Calculate the percentage of apartments built before 1945 , between 1946 and 1990, and after 1991.
+     * Return the label for the interval with the largest percentage.
+     *
+     * @param cols: one line from the dataset, split into a list of Strings
+     * @return label of the interval with max percentage
+     */
     public static String extractResidenceWithMaxPercentages(String[] cols) {
         Float old_residence_percentage = Float.parseFloat(cols[33]) + Float.parseFloat(cols[34]);
 
@@ -105,7 +133,17 @@ public class Enedis {
     }
 
     public static class Mapper1 extends Mapper<LongWritable, Text, Text, Text>{
+
         /**
+         * Get a line from the dataset and write the following to the context:
+         * key = commune_code
+         * value = average_residence_consumption:surface_label:residence_label:electric_heating_rate
+         *
+         * @param key: line number
+         * @param value: one line from the dataset
+         * @param context
+         * @throws IOException
+         * @throws InterruptedException
          */
         public void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
@@ -134,6 +172,20 @@ public class Enedis {
 
     public static class Reduce1 extends Reducer<Text,Text,Text,Text> {
 
+        /**
+         * Calculate the average yearly consumption for the residence sector for the comune given by *key*.
+         * Set global variables to find min and max consumption and electric heating rate.
+         *
+         * Write the following to the context:
+         * key = average_energy_consumption
+         * value = surface_label:residence_label:electric_heating_rate
+         *
+         * @param key: commune code
+         * @param values: list of values mapped by Mapper1
+         * @param context
+         * @throws IOException
+         * @throws InterruptedException
+         */
         public void reduce(Text key, Iterable<Text> values,
                            Context context
         ) throws IOException, InterruptedException {
@@ -184,6 +236,13 @@ public class Enedis {
         }
     }
 
+    /**
+     * Split the interval between the min consumption and max consumption of the dataset into 4 parts.
+     * Determine to which interval the input consumption belongs, and return its label.
+     *
+     * @param conso: average yearly consumption for the residency sector of a commune
+     * @return the label of the interval
+     */
     public static String categoriseByConsoRange(Float conso) {
         Float middle = (global_max_conso-global_min_conso)/2;
         Float quarter = (middle-global_min_conso)/2;
@@ -199,6 +258,13 @@ public class Enedis {
             return CONSOLABELS[3];
     }
 
+    /**
+     * Split the interval between the min and max electricat heating rate of the dataset into 4 parts.
+     * Determine to which interval the input consumption belongs, and return its label.
+     *
+     * @param heating: rate of apartments using electrical heating
+     * @return the label of the interval
+     */
     public static String categoriseByHeatingRange(Float heating) {
         Float middle = (global_max_heating-global_min_heating)/2;
         Float quarter = (middle-global_min_heating)/2;
