@@ -30,13 +30,13 @@ public class Enedis {
             "Résidence âge moyenne",
             "Résidence récente"};
 
-    public static String[] CONSOLABLES =
+    public static String[] CONSOLABELS =
             {"Conso très basse",
             "Conso basse",
             "Conso modérée",
             "Conso élevée"};
 
-    public static String[] HEATINGLABLES =
+    public static String[] HEATINGLABELS =
             {"Taux chauffage électr. très bas",
             "Taux chauffage électr. bas",
             "Taux chauffage électr. moyen",
@@ -190,13 +190,13 @@ public class Enedis {
         Float three_quarter = (global_max_conso-quarter);
 
         if (conso < quarter)
-            return CONSOLABLES[0];
+            return CONSOLABELS[0];
         else if (conso < middle)
-            return CONSOLABLES[1];
+            return CONSOLABELS[1];
         else if (conso < three_quarter)
-            return CONSOLABLES[2];
+            return CONSOLABELS[2];
         else
-            return CONSOLABLES[3];
+            return CONSOLABELS[3];
     }
 
     public static String categoriseByHeatingRange(Float heating) {
@@ -205,13 +205,13 @@ public class Enedis {
         Float three_quarter = (global_max_heating-quarter);
 
         if (heating < quarter)
-            return HEATINGLABLES[0];
+            return HEATINGLABELS[0];
         else if (heating < middle)
-            return HEATINGLABLES[1];
+            return HEATINGLABELS[1];
         else if (heating < three_quarter)
-            return HEATINGLABLES[2];
+            return HEATINGLABELS[2];
         else
-            return HEATINGLABLES[3];
+            return HEATINGLABELS[3];
     }
 
     public static class Mapper2 extends Mapper<LongWritable, Text, Text, Text>{
@@ -265,8 +265,8 @@ public class Enedis {
             for(i=0; i<RESIDENCYLABELS.length; i++)
                 residence_map.put(RESIDENCYLABELS[i],0);
 
-            for(i=0; i<HEATINGLABLES.length; i++)
-                heating_map.put(HEATINGLABLES[i],0);
+            for(i=0; i< HEATINGLABELS.length; i++)
+                heating_map.put(HEATINGLABELS[i],0);
 
             for (Text entry : values){
                 String[] value = entry.toString().split(":");
