@@ -5,6 +5,11 @@ University of Strasbourg, M2 ILC 2019
 Developers :
 GOMES FERNANDES Caty, HARTMEYER Vincent
 
+### Prerequisites
+
+java 9.0.4
+
+Hadoop 3.1.1
 
 ### Compile and Run
 
