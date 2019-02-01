@@ -21,14 +21,14 @@ public class Enedis {
             "Autres"};
 
     public static String[] SURFACELABELS =
-            {"Surface petite",
-            "Surface moyenne",
-            "Surface large"};
+            {"Surfaces petites",
+            "Surfaces moyennes",
+            "Surfaces larges"};
 
     public static String[] RESIDENCYLABELS =
-            {"Résidence ancienne",
-            "Résidence âge moyenne",
-            "Résidence récente"};
+            {"Résidences anciennes",
+            "Résidences âge moyenne",
+            "Résidences récentes"};
 
     public static String[] CONSOLABELS =
             {"Conso très basse",
@@ -42,12 +42,27 @@ public class Enedis {
             "Taux chauffage électr. moyen",
             "Taux chauffage électr. élevé"};
 
+    public static String[] COLLECTIVEHOUSINGLABELS =
+            {"Taux logements collectifs très bas",
+                    "Taux logements collectifs bas",
+                    "Taux logements collectifs moyen",
+                    "Taux logements collectifs élevé"};
+
+    public static String[] POPULATIONLABELS =
+            {"Nombre d'habitants faible",
+                    "Nombre d'habitants moyen",
+                    "Nombre d'habitatns élevé"};
+
     public static final double EPSILON = 0.01;
 
     public static Float global_min_conso = Float.MAX_VALUE;
     public static Float global_max_conso = Float.MIN_VALUE;
     public static Float global_min_heating = Float.MAX_VALUE;
     public static Float global_max_heating = Float.MIN_VALUE;
+    public static Float global_min_housing = Float.MAX_VALUE;
+    public static Float global_max_housing = Float.MIN_VALUE;
+    public static Float global_min_population = Float.MAX_VALUE;
+    public static Float global_max_population = Float.MIN_VALUE;
 
     public static String getMaxSector(Float[] avgs) {
         int maxIndex = 0;
@@ -83,18 +98,28 @@ public class Enedis {
     }
 
      /**
-     * Calculate the percentage of apartments with < 40 m2 , between 40 and 80 m2, and over 80 m2.
+     * Calculate the percentage of apartments with < 30 m2 , between 30 and 100 m2, and over 100 m2.
      * Return the label for the interval with the largest percentage.
      *
      * @param cols: one line from the dataset, split into a list of Strings
      * @return label of the surface size with max percentage
      */
     public static String extractSurfaceWithMaxPercentages(String[] cols) {
+        /*
         Float small_surface_percentage = Float.parseFloat(cols[27]) + Float.parseFloat(cols[28]);
 
         Float medium_surface_percentage = Float.parseFloat(cols[29]) + Float.parseFloat(cols[30]);
 
         Float large_surface_percentage = Float.parseFloat(cols[31]) + Float.parseFloat(cols[32]);
+        */
+        Float small_surface_percentage = Float.parseFloat(cols[27]);
+
+        Float medium_surface_percentage = Float.parseFloat(cols[28])+
+                                            Float.parseFloat(cols[29]) +
+                                            Float.parseFloat(cols[30]) +
+                                            Float.parseFloat(cols[31]);
+
+        Float large_surface_percentage = Float.parseFloat(cols[32]);
 
         Float max = Math.max(small_surface_percentage, Math.max(medium_surface_percentage,large_surface_percentage));
 
@@ -108,18 +133,18 @@ public class Enedis {
     }
 
     /**
-     * Calculate the percentage of apartments built before 1945 , between 1946 and 1990, and after 1991.
+     * Calculate the percentage of apartments built before 1970 , between 1971 and 2010, and after 2011.
      * Return the label for the interval with the largest percentage.
      *
      * @param cols: one line from the dataset, split into a list of Strings
      * @return label of the interval with max percentage
      */
     public static String extractResidenceWithMaxPercentages(String[] cols) {
-        Float old_residence_percentage = Float.parseFloat(cols[33]) + Float.parseFloat(cols[34]);
+        Float old_residence_percentage = Float.parseFloat(cols[33]) + Float.parseFloat(cols[34]) + Float.parseFloat(cols[35]);
 
-        Float medium_residence_percentage = Float.parseFloat(cols[35]) + Float.parseFloat(cols[36]);
+        Float medium_residence_percentage =  Float.parseFloat(cols[36]) + Float.parseFloat(cols[37]) + Float.parseFloat(cols[38]);
 
-        Float new_residence_percentage = Float.parseFloat(cols[37]) + Float.parseFloat(cols[38]) + Float.parseFloat(cols[39]);
+        Float new_residence_percentage =  Float.parseFloat(cols[39]);
 
         Float max = Math.max(old_residence_percentage, Math.max(medium_residence_percentage,new_residence_percentage));
 
@@ -153,18 +178,26 @@ public class Enedis {
             if (Float.parseFloat(cols[10]) == 0.0)
                 return; //pas de sites ENEDIS
 
-            Float avg_residence = Float.parseFloat(cols[12]);
+            String avg_residence = cols[12];
 
-            String taux_chauffage = cols[40];
+            String population = cols[24];
+
+            String collective_housing_rate = cols[25];
+
+            String electric_heating_rate = cols[40];
 
             StringBuilder output_value = new StringBuilder();
             output_value.append(avg_residence.toString());
+            output_value.append(":");
+            output_value.append(collective_housing_rate);
             output_value.append(":");
             output_value.append(extractSurfaceWithMaxPercentages(cols));
             output_value.append(":");
             output_value.append(extractResidenceWithMaxPercentages(cols));
             output_value.append(":");
-            output_value.append(taux_chauffage);
+            output_value.append(electric_heating_rate);
+            output_value.append(":");
+            output_value.append(population);
 
             context.write(new Text(commune), new Text(output_value.toString()));
         }
@@ -193,18 +226,24 @@ public class Enedis {
             String surface = new String();
             String residence = new String();
             String heating_string = new String();
+            String housing_string = new String();
+            String population_string = new String();
 
             for (Text v : values) {
                 String[] content = v.toString().split(":");
                 Float consumption = Float.parseFloat(content[0]);
                 list_consumption.add(consumption);
 
-                surface = content[1];
-                residence = content[2];
-                heating_string = content[3];
+                housing_string = content[1];
+                surface = content[2];
+                residence = content[3];
+                heating_string = content[4];
+                population_string = content[5];
             }
 
             Float heating = Float.parseFloat(heating_string);
+            Float housing = Float.parseFloat(housing_string);
+            Float population = Float.parseFloat(population_string);
 
             Float avg = new Float(0);
             for(Float entry : list_consumption) {
@@ -224,13 +263,29 @@ public class Enedis {
             if (heating < global_min_heating) {
                 global_min_heating = heating;
             }
+            if (housing > global_max_housing) {
+                global_max_housing = housing;
+            }
+            if (housing < global_min_housing) {
+                global_min_housing = housing;
+            }
+            if (population > global_max_population) {
+                global_max_population = population;
+            }
+            if (population < global_min_population) {
+                global_min_population = population;
+            }
 
             StringBuilder output = new StringBuilder();
+            output.append(housing);
+            output.append(":");
             output.append(surface);
             output.append(":");
             output.append(residence);
             output.append(":");
             output.append(heating_string);
+            output.append(":");
+            output.append(population_string);
 
             context.write(new Text(avg.toString()), new Text(output.toString()));
         }
@@ -280,6 +335,33 @@ public class Enedis {
             return HEATINGLABELS[3];
     }
 
+    public static String categoriseByCollectiveHousingRange(Float housing) {
+        Float middle = (global_max_housing-global_min_housing)/2;
+        Float quarter = (middle-global_min_housing)/2;
+        Float three_quarter = (global_max_housing-quarter);
+
+        if (housing < quarter)
+            return COLLECTIVEHOUSINGLABELS[0];
+        else if (housing < middle)
+            return COLLECTIVEHOUSINGLABELS[1];
+        else if (housing < three_quarter)
+            return COLLECTIVEHOUSINGLABELS[2];
+        else
+            return COLLECTIVEHOUSINGLABELS[3];
+    }
+
+    public static String categoriseByPopulationRange(Float population) {
+        Float third = (global_max_population-global_min_population)/3;
+        Float two_thirds = global_min_population + third;
+
+        if (population < third)
+            return POPULATIONLABELS[0];
+        else if (population < two_thirds)
+            return POPULATIONLABELS[1];
+        else
+            return POPULATIONLABELS[2];
+    }
+
     public static class Mapper2 extends Mapper<LongWritable, Text, Text, Text>{
 
         public void map(LongWritable key, Text value, Context context)
@@ -288,14 +370,20 @@ public class Enedis {
             String[] values = value.toString().split("\t")[1].split(":");
 
             String conso_category = categoriseByConsoRange(conso);
-            String heating_category = categoriseByHeatingRange(Float.parseFloat(values[2]));
+            String housing_category = categoriseByCollectiveHousingRange(Float.parseFloat(values[0]));
+            String heating_category = categoriseByHeatingRange(Float.parseFloat(values[3]));
+            String population_category = categoriseByPopulationRange(Float.parseFloat(values[4]));
 
             StringBuilder output = new StringBuilder();
-            output.append(values[0]);
+            output.append(housing_category);
             output.append(":");
             output.append(values[1]);
             output.append(":");
+            output.append(values[2]);
+            output.append(":");
             output.append(heating_category);
+            output.append(":");
+            output.append(population_category);
 
             context.write(new Text(conso_category),new Text(output.toString()));
         }
@@ -324,6 +412,8 @@ public class Enedis {
             Map<String,Integer> surface_map = new HashMap<String, Integer>();
             Map<String,Integer> residence_map = new HashMap<String, Integer>();
             Map<String,Integer> heating_map = new HashMap<String, Integer>();
+            Map<String,Integer> housing_map = new HashMap<String, Integer>();
+            Map<String,Integer> population_map = new HashMap<String, Integer>();
             int i;
             for(i=0; i<SURFACELABELS.length; i++)
                 surface_map.put(SURFACELABELS[i],0);
@@ -334,18 +424,32 @@ public class Enedis {
             for(i=0; i< HEATINGLABELS.length; i++)
                 heating_map.put(HEATINGLABELS[i],0);
 
+            for(i=0; i< COLLECTIVEHOUSINGLABELS.length; i++)
+                housing_map.put(COLLECTIVEHOUSINGLABELS[i],0);
+
+            for(i=0; i< POPULATIONLABELS.length; i++)
+                population_map.put(POPULATIONLABELS[i],0);
+
             for (Text entry : values){
                 String[] value = entry.toString().split(":");
-                surface_map.put(value[0],surface_map.get(value[0]) + 1);
-                residence_map.put(value[1],residence_map.get(value[1]) + 1);
-                heating_map.put(value[2],heating_map.get(value[2]) + 1);
+                housing_map.put(value[0],housing_map.get(value[0]) + 1);
+                surface_map.put(value[1],surface_map.get(value[1]) + 1);
+                residence_map.put(value[2],residence_map.get(value[2]) + 1);
+                heating_map.put(value[3],heating_map.get(value[3]) + 1);
+                population_map.put(value[4],population_map.get(value[4]) + 1);
             }
 
             String max_surface_categ = getMaxCategory(surface_map);
             String max_residence_categ = getMaxCategory(residence_map);
             String max_heating_categ = getMaxCategory(heating_map);
+            String max_housing_categ = getMaxCategory(housing_map);
+            String max_population_categ = getMaxCategory(population_map);
 
-            context.write(key,new Text(max_surface_categ+","+max_residence_categ+","+max_heating_categ));
+            context.write(key,new Text(max_housing_categ+":"+
+                                        max_surface_categ+":"+
+                                        max_residence_categ+":"+
+                                        max_heating_categ+":"+
+                                        max_population_categ));
         }
     }
 
