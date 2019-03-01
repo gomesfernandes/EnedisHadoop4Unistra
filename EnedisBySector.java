@@ -159,6 +159,7 @@ public class EnedisBySector {
             }
 
             StringBuilder output_value = new StringBuilder();
+            output_value.append("Département ");
             output_value.append(max_dpt);
             output_value.append(" (");
             output_value.append(max.toString());
@@ -171,7 +172,7 @@ public class EnedisBySector {
     public static void main(String[] args) throws Exception {
 
         if (args.length < 2) {
-            System.err.println("Usage : hadoop jar Enedis.jar Enedis input output");
+            System.err.println("Usage : hadoop jar EnedisBySector.jar EnedisBySector input output");
             System.exit(0);
         }
 

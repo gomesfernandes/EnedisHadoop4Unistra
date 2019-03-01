@@ -24,19 +24,19 @@ runSector:
 	@echo $(RED)"\n>>>Running Sector analysis\n"$(RESET)
 	hadoop jar EnedisBySector.jar EnedisBySector input sector-output
 	@echo $(RED)"\n>>>End of Sector analysis\n"$(RESET)
-	mv sector-output all_outputs/
-	mv sector-output-final all_outputs/
+	mv sector-output/ all_outputs/
+	mv sector-output-final/ all_outputs/
 
 
 runConso:
 	@echo $(RED)"\n>>>Running Consumption analysis\n"$(RESET)
 	hadoop jar EnedisByConsumption.jar EnedisByConsumption input conso-output
 	@echo $(RED)"\n>>>End of Consumption analysis\n"$(RESET)
-	mv conso-output all_outputs/
-	mv conso-output-final all_outputs/
+	mv conso-output/ all_outputs/
+	mv conso-output-final/ all_outputs/
 
 clean:
-	rm -rf *_classes *-output *-output-final all_outputs
+	rm -rf *.jar *_classes *-output *-output-final all_outputs
 
 cleanOutput:
 	rm -rf *-output *-output-final all_outputs

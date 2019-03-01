@@ -456,7 +456,7 @@ public class EnedisByConsumption {
     public static void main(String[] args) throws Exception {
 
         if (args.length < 2) {
-            System.err.println("Usage : hadoop jar Enedis.jar Enedis input output");
+            System.err.println("Usage : hadoop jar EnedisByConsumption.jar EnedisByConsumption input output");
             System.exit(0);
         }
 
