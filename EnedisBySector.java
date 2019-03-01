@@ -10,7 +10,7 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
-public class Enedis {
+public class EnedisBySector {
 
     public static String[] SECTORLABELS = {"Residentiel",
                                             "Professionnel",
@@ -178,7 +178,7 @@ public class Enedis {
         Configuration conf = new Configuration();
 
         Job job1 = new Job(conf, "FirstRun");
-        job1.setJarByClass(Enedis.class);
+        job1.setJarByClass(EnedisBySector.class);
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
         job1.setMapperClass(PerDepartmentMapper.class);
@@ -197,7 +197,7 @@ public class Enedis {
         System.out.println("----------------------------------------------");
 
         Job job2 = new Job(conf, "SecondRun");
-        job2.setJarByClass(Enedis.class);
+        job2.setJarByClass(EnedisBySector.class);
         job2.setOutputKeyClass(Text.class);
         job2.setOutputValueClass(Text.class);
         job2.setMapperClass(ExtractMaxSectorMapper.class);
