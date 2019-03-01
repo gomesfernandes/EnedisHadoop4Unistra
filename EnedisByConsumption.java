@@ -1,5 +1,7 @@
 import java.io.IOException;
 import java.util.*;
+import java.text.DecimalFormat;
+import java.math.RoundingMode;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.*;
@@ -303,14 +305,17 @@ public class EnedisByConsumption {
         Float quarter = (middle-global_min_conso)/2;
         Float three_quarter = (global_max_conso-quarter);
 
+        DecimalFormat df = new DecimalFormat("##.##");
+        df.setRoundingMode(RoundingMode.DOWN);
+
         if (conso < quarter)
-            return CONSOLABELS[0];
+            return CONSOLABELS[0]+"(<"+df.format(quarter)+"MWh)";
         else if (conso < middle)
-            return CONSOLABELS[1];
+            return CONSOLABELS[1]+"(<"+df.format(middle)+"MWh)";
         else if (conso < three_quarter)
-            return CONSOLABELS[2];
+            return CONSOLABELS[2]+"(<"+df.format(three_quarter)+"MWh)";
         else
-            return CONSOLABELS[3];
+            return CONSOLABELS[3]+"(>="+df.format(three_quarter)+"MWh)";
     }
 
     /**
