@@ -23,37 +23,37 @@ public class EnedisByConsumption {
                     "Autres"};
 
     public static String[] SURFACELABELS =
-            {"Surfaces petites",
-                    "Surfaces moyennes",
-                    "Surfaces larges"};
+            {"Surfaces petites(<30m2)",
+            "Surfaces moyennes(>=30,<100m2)",
+            "Surfaces larges(>=100m2)"};
 
     public static String[] RESIDENCYLABELS =
-            {"Résidences anciennes",
-                    "Résidences âge moyenne",
-                    "Résidences récentes"};
+            {"Résidences anciennes(<=1970)",
+            "Résidences âge moyen(<=2010)",
+            "Résidences récentes(>2010)"};
 
     public static String[] CONSOLABELS =
             {"Conso très basse",
-                    "Conso basse",
-                    "Conso modérée",
-                    "Conso élevée"};
+            "Conso basse",
+            "Conso modérée",
+            "Conso élevée"};
 
     public static String[] HEATINGLABELS =
             {"Taux chauffage électr. très bas",
-                    "Taux chauffage électr. bas",
-                    "Taux chauffage électr. moyen",
-                    "Taux chauffage électr. élevé"};
+            "Taux chauffage électr. bas",
+            "Taux chauffage électr. moyen",
+            "Taux chauffage électr. élevé"};
 
     public static String[] COLLECTIVEHOUSINGLABELS =
             {"Taux logements collectifs très bas",
-                    "Taux logements collectifs bas",
-                    "Taux logements collectifs moyen",
-                    "Taux logements collectifs élevé"};
+            "Taux logements collectifs bas",
+            "Taux logements collectifs moyen",
+            "Taux logements collectifs élevé"};
 
     public static String[] POPULATIONLABELS =
-            {"Nb habitants bas",
-                    "Nb habitants moyen",
-                    "Nb habitants élevé"};
+            {"Nombre habitants bas",
+            "Nombre habitants moyen",
+            "Nombre habitants élevé"};
 
     public static final double EPSILON = 0.01;
 
@@ -124,13 +124,10 @@ public class EnedisByConsumption {
         Float max = Math.max(small_surface_percentage, Math.max(medium_surface_percentage,large_surface_percentage));
 
         if (Math.abs(max - small_surface_percentage) < EPSILON) {
-            SURFACELABELS[0] = "Surfaces petites(<30m2)";
             return SURFACELABELS[0];
         } else if (Math.abs(max - medium_surface_percentage) < EPSILON) {
-            SURFACELABELS[1] = "Surfaces moyennes(>=30,<100m2)";
             return SURFACELABELS[1];
         } else {
-            SURFACELABELS[2] = "Surfaces larges(>=100m2)";
             return SURFACELABELS[2];
         }
     }
@@ -152,13 +149,10 @@ public class EnedisByConsumption {
         Float max = Math.max(old_residence_percentage, Math.max(medium_residence_percentage,new_residence_percentage));
 
         if (Math.abs(max - old_residence_percentage) < EPSILON) {
-            RESIDENCYLABELS[0] = "Résidences anciennes(<=1970)";
             return RESIDENCYLABELS[0];
         } else if (Math.abs(max - medium_residence_percentage) < EPSILON) {
-            RESIDENCYLABELS[1] = "Résidences âge moyenne(<=2010)";
             return RESIDENCYLABELS[1];
         } else {
-            RESIDENCYLABELS[2] = "Résidences récentes";
             return RESIDENCYLABELS[2];
         }
     }
@@ -309,17 +303,14 @@ public class EnedisByConsumption {
         Float quarter = (middle-global_min_conso)/2;
         Float three_quarter = (global_max_conso-quarter);
 
-        DecimalFormat df = new DecimalFormat("##.##");
-        df.setRoundingMode(RoundingMode.DOWN);
-
         if (conso < quarter)
-            return CONSOLABELS[0]+"(<"+df.format(quarter)+"MWh)";
+            return CONSOLABELS[0];
         else if (conso < middle)
-            return CONSOLABELS[1]+"(<"+df.format(middle)+"MWh)";
+            return CONSOLABELS[1];
         else if (conso < three_quarter)
-            return CONSOLABELS[2]+"(<"+df.format(three_quarter)+"MWh)";
+            return CONSOLABELS[2];
         else
-            return CONSOLABELS[3]+"(>="+df.format(three_quarter)+"MWh)";
+            return CONSOLABELS[3];
     }
 
     /**
@@ -331,7 +322,7 @@ public class EnedisByConsumption {
      */
     public static String categoriseByHeatingRange(Float heating) {
         Float middle = (global_max_heating-global_min_heating)/2;
-        Float quarter = (middle-global_min_heating)/2;
+        Float quarter = (middle - global_min_heating)/2;
         Float three_quarter = (global_max_heating-quarter);
 
         DecimalFormat df = new DecimalFormat("##.##");
@@ -392,6 +383,20 @@ public class EnedisByConsumption {
             POPULATIONLABELS[2] = "Nb habitants élevé(>=" + df.format(two_thirds) + ")";
             return POPULATIONLABELS[2];
         }
+    }
+
+    public static void update_category_labels() {
+        Float middle = (global_max_conso-global_min_conso)/2;
+        Float quarter = (middle-global_min_conso)/2;
+        Float three_quarter = (global_max_conso-quarter);
+
+        DecimalFormat df = new DecimalFormat("##.##");
+        df.setRoundingMode(RoundingMode.DOWN);
+
+        CONSOLABELS[0] = CONSOLABELS[0]+"(<"+df.format(quarter)+"MWh)";
+        CONSOLABELS[1] = CONSOLABELS[1]+"(<"+df.format(middle)+"MWh)";
+        CONSOLABELS[2] = CONSOLABELS[2]+"(<"+df.format(three_quarter)+"MWh)";
+        CONSOLABELS[3] = CONSOLABELS[3]+"(>="+df.format(three_quarter)+"MWh)";
     }
 
     public static class Mapper2 extends Mapper<LongWritable, Text, Text, Text>{
@@ -478,11 +483,12 @@ public class EnedisByConsumption {
             String max_population_categ = getMaxCategory(population_map);
 
             context.write(key, new Text(
-                    max_housing_categ+":"+
-                    max_surface_categ+":"+
-                    max_residence_categ+":"+
-                    max_heating_categ+":"+
-                    max_population_categ)
+                    "\n\t"
+                    + max_housing_categ + "\n\t"
+                    + max_surface_categ + "\n\t"
+                    + max_residence_categ + "\n\t"
+                    + max_heating_categ + "\n\t"
+                    + max_population_categ)
             );
         }
     }
@@ -514,6 +520,8 @@ public class EnedisByConsumption {
         System.out.println("----------------------------------------------");
         System.out.println("END OF FIRST JOB");
         System.out.println("----------------------------------------------");
+
+        update_category_labels();
 
         Job job2 = new Job(conf, "SecondRun");
         job2.setJarByClass(EnedisByConsumption.class);
