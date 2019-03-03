@@ -72,28 +72,20 @@ public class EnedisByConsumption {
     public static Float global_min_population = Float.MAX_VALUE;
     public static Float global_max_population = Float.MIN_VALUE;
 
-    public static class Mapper0 extends Mapper<LongWritable, Text, Text, Text>{
+    public static class ValuesMapper extends Mapper<LongWritable, Text, Text, Text>{
 
         public void map(LongWritable key, Text value, Context context)
                 throws IOException, InterruptedException {
-            String[] cols = value.toString().split(";");
+            String conso = value.toString().split("\t")[0];
+            String[] values = value.toString().split("\t")[1].split(":");
 
-            if (Float.parseFloat(cols[10]) == 0.0)
-                return; //pas de sites ENEDIS
-
-            String avg_residence = cols[12];
-            String population = cols[24];
-            String collective_housing_rate = cols[25];
-            String electric_heating_rate = cols[40];
-
-            context.write(new Text("conso"), new Text(avg_residence));
-            context.write(new Text("population"), new Text(population));
-            context.write(new Text("collective"), new Text(collective_housing_rate));
-            context.write(new Text("heating"), new Text(electric_heating_rate));
-
+            context.write(new Text("conso"), new Text(conso));
+            context.write(new Text("housing"), new Text(values[0]));
+            context.write(new Text("heating"), new Text(values[3]));
+            context.write(new Text("population"), new Text(values[4]));
         }
     }
-    public static class Reducer0 extends Reducer<Text,Text,Text,Text> {
+    public static class MinMaxMapper extends Reducer<Text,Text,Text,Text> {
 
         public void reduce(Text key, Iterable<Text> values,
                            Context context
@@ -295,7 +287,6 @@ public class EnedisByConsumption {
         }
     }
 
-
     public static void readMinMax(String output) {
         try {
             File file = new File(output+"-minmax/part-r-00000");
@@ -303,7 +294,7 @@ public class EnedisByConsumption {
 
             while (input.hasNextLine()) {
                 String[] tokens = input.nextLine().split("\t");
-                if (Objects.equals(tokens[0],"collective")) {
+                if (Objects.equals(tokens[0],"housing")) {
                     global_min_housing = Float.parseFloat(tokens[1]);
                     global_max_housing = Float.parseFloat(tokens[2]);
                 } else if (Objects.equals(tokens[0],"conso")) {
@@ -455,6 +446,12 @@ public class EnedisByConsumption {
         Float quarter = (middle-global_min_housing)/2;
         Float three_quarter = (global_max_housing-quarter);
 
+        System.out.println("min:"+global_min_housing);
+        System.out.println("max:"+global_max_housing);
+        System.out.println("middle:"+middle);
+        System.out.println("quarter:"+quarter);
+        System.out.println("three_quarter:"+three_quarter);
+
         DecimalFormat df = new DecimalFormat("##.##");
         df.setRoundingMode(RoundingMode.DOWN);
 
@@ -520,7 +517,6 @@ public class EnedisByConsumption {
     }
 
 
-
     public static void main(String[] args) throws Exception {
 
         if (args.length < 2) {
@@ -530,46 +526,44 @@ public class EnedisByConsumption {
 
         Configuration conf = new Configuration();
 
-        Job job0 = new Job(conf, "PrepRun");
+        Job job0 = new Job(conf, "FirstRun");
         job0.setJarByClass(EnedisByConsumption.class);
         job0.setOutputKeyClass(Text.class);
         job0.setOutputValueClass(Text.class);
-        job0.setMapperClass(Mapper0.class);
-        job0.setReducerClass(Reducer0.class);
-
+        job0.setMapperClass(Mapper1.class);
+        job0.setReducerClass(Reduce1.class);
         job0.setInputFormatClass(TextInputFormat.class);
         job0.setOutputFormatClass(TextOutputFormat.class);
 
         FileInputFormat.addInputPath(job0, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job0, new Path(args[1]+"-minmax"));
+        FileOutputFormat.setOutputPath(job0, new Path(args[1]));
 
         job0.waitForCompletion(true);
 
         System.out.println("----------------------------------------------");
-        System.out.println("END OF PREP JOB");
+        System.out.println("END OF FIRST JOB");
         System.out.println("----------------------------------------------");
 
-        readMinMax(args[1]);
-        update_category_labels();
-
-        Job job1 = new Job(conf, "FirstRun");
+        Job job1 = new Job(conf, "MinMaxRun");
         job1.setJarByClass(EnedisByConsumption.class);
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
-        job1.setMapperClass(Mapper1.class);
-        job1.setReducerClass(Reduce1.class);
-
+        job1.setMapperClass(ValuesMapper.class);
+        job1.setReducerClass(MinMaxMapper.class);
         job1.setInputFormatClass(TextInputFormat.class);
         job1.setOutputFormatClass(TextOutputFormat.class);
 
-        FileInputFormat.addInputPath(job1, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job1, new Path(args[1]));
+        FileInputFormat.addInputPath(job1, new Path(args[1]+"/part-r-00000"));
+        FileOutputFormat.setOutputPath(job1, new Path(args[1]+"-minmax"));
 
         job1.waitForCompletion(true);
 
         System.out.println("----------------------------------------------");
-        System.out.println("END OF FIRST JOB");
+        System.out.println("END OF MIN MAX JOB");
         System.out.println("----------------------------------------------");
+
+        readMinMax(args[1]);
+        update_category_labels();
 
         Job job2 = new Job(conf, "SecondRun");
         job2.setJarByClass(EnedisByConsumption.class);
@@ -577,7 +571,6 @@ public class EnedisByConsumption {
         job2.setOutputValueClass(Text.class);
         job2.setMapperClass(Mapper2.class);
         job2.setReducerClass(Reducer2.class);
-
         job2.setInputFormatClass(TextInputFormat.class);
         job2.setOutputFormatClass(TextOutputFormat.class);
 
