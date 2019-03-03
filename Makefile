@@ -35,10 +35,11 @@ runConso: cleanOutput
 	@echo $(RED)"\n>>>End of Consumption analysis\n"$(RESET)
 	-mkdir all_outputs 2>/dev/null
 	mv conso-output all_outputs/conso-output
+	mv conso-output-minmax all_outputs/conso-output-minmax
 	mv conso-output-final all_outputs/conso-output-final
 
 clean:
 	rm -rf *.jar *_classes *-output *-output-final all_outputs
 
 cleanOutput:
-	rm -rf *-output *-output-final all_outputs
+	rm -rf *-output *-output-final *-output-minmax all_outputs

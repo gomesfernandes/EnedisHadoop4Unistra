@@ -2,6 +2,8 @@ import java.io.IOException;
 import java.util.*;
 import java.text.DecimalFormat;
 import java.math.RoundingMode;
+import java.io.File;
+import java.util.Scanner;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.conf.*;
@@ -69,6 +71,257 @@ public class EnedisByConsumption {
     public static Float global_max_housing = Float.MIN_VALUE;
     public static Float global_min_population = Float.MAX_VALUE;
     public static Float global_max_population = Float.MIN_VALUE;
+
+    public static class Mapper0 extends Mapper<LongWritable, Text, Text, Text>{
+
+        public void map(LongWritable key, Text value, Context context)
+                throws IOException, InterruptedException {
+            String[] cols = value.toString().split(";");
+
+            if (Float.parseFloat(cols[10]) == 0.0)
+                return; //pas de sites ENEDIS
+
+            String avg_residence = cols[12];
+            String population = cols[24];
+            String collective_housing_rate = cols[25];
+            String electric_heating_rate = cols[40];
+
+            context.write(new Text("conso"), new Text(avg_residence));
+            context.write(new Text("population"), new Text(population));
+            context.write(new Text("collective"), new Text(collective_housing_rate));
+            context.write(new Text("heating"), new Text(electric_heating_rate));
+
+        }
+    }
+    public static class Reducer0 extends Reducer<Text,Text,Text,Text> {
+
+        public void reduce(Text key, Iterable<Text> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+
+            List<Float> values_list = new ArrayList<Float>();
+
+            for (Text entry : values){
+                Float value = Float.parseFloat(entry.toString());
+                values_list.add(value);
+            }
+
+            Float min = Collections.min(values_list);
+            Float max = Collections.max(values_list);
+
+            context.write(key, new Text(min+"\t"+max));
+        }
+    }
+    public static class Mapper1 extends Mapper<LongWritable, Text, Text, Text>{
+
+        /**
+         * Get a line from the dataset and write the following to the context:
+         * key = commune_code
+         * value = average_residence_consumption:surface_label:residence_label:electric_heating_rate
+         *
+         * @param key: line number
+         * @param value: one line from the dataset
+         * @param context
+         * @throws IOException
+         * @throws InterruptedException
+         */
+        public void map(LongWritable key, Text value, Context context)
+                throws IOException, InterruptedException {
+            String[] cols = value.toString().split(";");
+            String commune = cols[2];
+
+            if (Float.parseFloat(cols[10]) == 0.0)
+                return; //pas de sites ENEDIS
+
+            String avg_residence = cols[12];
+            String population = cols[24];
+            String collective_housing_rate = cols[25];
+            String electric_heating_rate = cols[40];
+
+            StringBuilder output_value = new StringBuilder();
+            output_value.append(avg_residence.toString());
+            output_value.append(":");
+            output_value.append(collective_housing_rate);
+            output_value.append(":");
+            output_value.append(extractSurfaceWithMaxPercentages(cols));
+            output_value.append(":");
+            output_value.append(extractResidenceWithMaxPercentages(cols));
+            output_value.append(":");
+            output_value.append(electric_heating_rate);
+            output_value.append(":");
+            output_value.append(population);
+
+            context.write(new Text(commune), new Text(output_value.toString()));
+        }
+    }
+    public static class Reduce1 extends Reducer<Text,Text,Text,Text> {
+
+        /**
+         * Calculate the average yearly consumption for the residence sector for the comune given by *key*.
+         * Set global variables to find min and max consumption and electric heating rate.
+         *
+         * Write the following to the context:
+         * key = average_energy_consumption
+         * value = surface_label:residence_label:electric_heating_rate
+         *
+         * @param key: commune code
+         * @param values: list of values mapped by Mapper1
+         * @param context
+         * @throws IOException
+         * @throws InterruptedException
+         */
+        public void reduce(Text key, Iterable<Text> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+            List<Float> list_consumption = new ArrayList<Float>();
+            String surface = new String();
+            String residence = new String();
+            String heating_string = new String();
+            String housing_string = new String();
+            String population_string = new String();
+
+            for (Text v : values) {
+                String[] content = v.toString().split(":");
+                Float consumption = Float.parseFloat(content[0]);
+                list_consumption.add(consumption);
+
+                housing_string = content[1];
+                surface = content[2];
+                residence = content[3];
+                heating_string = content[4];
+                population_string = content[5];
+            }
+
+            Float heating = Float.parseFloat(heating_string);
+            Float housing = Float.parseFloat(housing_string);
+            Float population = Float.parseFloat(population_string);
+            Float avg = new Float(0);
+            for(Float entry : list_consumption) {
+                avg += entry;
+            }
+            avg= avg/list_consumption.size();
+
+            StringBuilder output = new StringBuilder();
+            output.append(housing);
+            output.append(":");
+            output.append(surface);
+            output.append(":");
+            output.append(residence);
+            output.append(":");
+            output.append(heating_string);
+            output.append(":");
+            output.append(population_string);
+
+            context.write(new Text(avg.toString()), new Text(output.toString()));
+        }
+    }
+    public static class Mapper2 extends Mapper<LongWritable, Text, Text, Text>{
+
+        public void map(LongWritable key, Text value, Context context)
+                throws IOException, InterruptedException {
+            Float conso = Float.parseFloat(value.toString().split("\t")[0]);
+            String[] values = value.toString().split("\t")[1].split(":");
+
+            String conso_category = categoriseByConsoRange(conso);
+            String housing_category = categoriseByCollectiveHousingRange(Float.parseFloat(values[0]));
+            String heating_category = categoriseByHeatingRange(Float.parseFloat(values[3]));
+            String population_category = categoriseByPopulationRange(Float.parseFloat(values[4]));
+
+            StringBuilder output = new StringBuilder();
+            output.append(housing_category);
+            output.append(":");
+            output.append(values[1]);
+            output.append(":");
+            output.append(values[2]);
+            output.append(":");
+            output.append(heating_category);
+            output.append(":");
+            output.append(population_category);
+
+            context.write(new Text(conso_category),new Text(output.toString()));
+        }
+
+    }
+    public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
+
+        public void reduce(Text key, Iterable<Text> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+
+            Map<String,Integer> surface_map = new HashMap<String, Integer>();
+            Map<String,Integer> residence_map = new HashMap<String, Integer>();
+            Map<String,Integer> heating_map = new HashMap<String, Integer>();
+            Map<String,Integer> housing_map = new HashMap<String, Integer>();
+            Map<String,Integer> population_map = new HashMap<String, Integer>();
+            int i;
+            for(i=0; i<SURFACELABELS.length; i++)
+                surface_map.put(SURFACELABELS[i],0);
+
+            for(i=0; i<RESIDENCYLABELS.length; i++)
+                residence_map.put(RESIDENCYLABELS[i],0);
+
+            for(i=0; i< HEATINGLABELS.length; i++)
+                heating_map.put(HEATINGLABELS[i],0);
+
+            for(i=0; i< COLLECTIVEHOUSINGLABELS.length; i++)
+                housing_map.put(COLLECTIVEHOUSINGLABELS[i],0);
+
+            for(i=0; i< POPULATIONLABELS.length; i++)
+                population_map.put(POPULATIONLABELS[i],0);
+
+            for (Text entry : values){
+                String[] value = entry.toString().split(":");
+                housing_map.put(value[0],housing_map.get(value[0]) + 1);
+                surface_map.put(value[1],surface_map.get(value[1]) + 1);
+                residence_map.put(value[2],residence_map.get(value[2]) + 1);
+                heating_map.put(value[3],heating_map.get(value[3]) + 1);
+                population_map.put(value[4],population_map.get(value[4]) + 1);
+            }
+
+            String max_surface_categ = getMaxCategory(surface_map);
+            String max_residence_categ = getMaxCategory(residence_map);
+            String max_heating_categ = getMaxCategory(heating_map);
+            String max_housing_categ = getMaxCategory(housing_map);
+            String max_population_categ = getMaxCategory(population_map);
+
+            context.write(key, new Text(
+                    "\n\t"
+                            + max_housing_categ + "\n\t"
+                            + max_surface_categ + "\n\t"
+                            + max_residence_categ + "\n\t"
+                            + max_heating_categ + "\n\t"
+                            + max_population_categ)
+            );
+        }
+    }
+
+
+    public static void readMinMax(String output) {
+        try {
+            File file = new File(output+"-minmax/part-r-00000");
+            Scanner input = new Scanner(file);
+
+            while (input.hasNextLine()) {
+                String[] tokens = input.nextLine().split("\t");
+                if (Objects.equals(tokens[0],"collective")) {
+                    global_min_housing = Float.parseFloat(tokens[1]);
+                    global_max_housing = Float.parseFloat(tokens[2]);
+                } else if (Objects.equals(tokens[0],"conso")) {
+                    global_min_conso = Float.parseFloat(tokens[1]);
+                    global_max_conso = Float.parseFloat(tokens[2]);
+                } else if (Objects.equals(tokens[0],"heating")) {
+                    global_min_heating = Float.parseFloat(tokens[1]);
+                    global_max_heating = Float.parseFloat(tokens[2]);
+                } else {
+                    global_min_population = Float.parseFloat(tokens[1]);
+                    global_max_population = Float.parseFloat(tokens[2]);
+                }
+            }
+            input.close();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
 
     /**
      * Calculate the sum of the values for "Superficie des logements 80 à 100 m2" and
@@ -145,140 +398,6 @@ public class EnedisByConsumption {
         }
     }
 
-    public static class Mapper1 extends Mapper<LongWritable, Text, Text, Text>{
-
-        /**
-         * Get a line from the dataset and write the following to the context:
-         * key = commune_code
-         * value = average_residence_consumption:surface_label:residence_label:electric_heating_rate
-         *
-         * @param key: line number
-         * @param value: one line from the dataset
-         * @param context
-         * @throws IOException
-         * @throws InterruptedException
-         */
-        public void map(LongWritable key, Text value, Context context)
-                throws IOException, InterruptedException {
-            String[] cols = value.toString().split(";");
-            String commune = cols[2];
-
-            if (Float.parseFloat(cols[10]) == 0.0)
-                return; //pas de sites ENEDIS
-
-            String avg_residence = cols[12];
-
-            String population = cols[24];
-
-            String collective_housing_rate = cols[25];
-
-            String electric_heating_rate = cols[40];
-
-            StringBuilder output_value = new StringBuilder();
-            output_value.append(avg_residence.toString());
-            output_value.append(":");
-            output_value.append(collective_housing_rate);
-            output_value.append(":");
-            output_value.append(extractSurfaceWithMaxPercentages(cols));
-            output_value.append(":");
-            output_value.append(extractResidenceWithMaxPercentages(cols));
-            output_value.append(":");
-            output_value.append(electric_heating_rate);
-            output_value.append(":");
-            output_value.append(population);
-
-            context.write(new Text(commune), new Text(output_value.toString()));
-        }
-    }
-
-    public static class Reduce1 extends Reducer<Text,Text,Text,Text> {
-
-        /**
-         * Calculate the average yearly consumption for the residence sector for the comune given by *key*.
-         * Set global variables to find min and max consumption and electric heating rate.
-         *
-         * Write the following to the context:
-         * key = average_energy_consumption
-         * value = surface_label:residence_label:electric_heating_rate
-         *
-         * @param key: commune code
-         * @param values: list of values mapped by Mapper1
-         * @param context
-         * @throws IOException
-         * @throws InterruptedException
-         */
-        public void reduce(Text key, Iterable<Text> values,
-                           Context context
-        ) throws IOException, InterruptedException {
-            List<Float> list_consumption = new ArrayList<Float>();
-            String surface = new String();
-            String residence = new String();
-            String heating_string = new String();
-            String housing_string = new String();
-            String population_string = new String();
-
-            for (Text v : values) {
-                String[] content = v.toString().split(":");
-                Float consumption = Float.parseFloat(content[0]);
-                list_consumption.add(consumption);
-
-                housing_string = content[1];
-                surface = content[2];
-                residence = content[3];
-                heating_string = content[4];
-                population_string = content[5];
-            }
-
-            Float heating = Float.parseFloat(heating_string);
-            Float housing = Float.parseFloat(housing_string);
-            Float population = Float.parseFloat(population_string);
-
-            Float avg = new Float(0);
-            for(Float entry : list_consumption) {
-                avg += entry;
-            }
-            avg= avg/list_consumption.size();
-
-            if (avg > global_max_conso) {
-                global_max_conso = avg;
-            }
-            if (avg < global_min_conso) {
-                global_min_conso = avg;
-            }
-            if (heating > global_max_heating) {
-                global_max_heating = heating;
-            }
-            if (heating < global_min_heating) {
-                global_min_heating = heating;
-            }
-            if (housing > global_max_housing) {
-                global_max_housing = housing;
-            }
-            if (housing < global_min_housing) {
-                global_min_housing = housing;
-            }
-            if (population > global_max_population) {
-                global_max_population = population;
-            }
-            if (population < global_min_population) {
-                global_min_population = population;
-            }
-
-            StringBuilder output = new StringBuilder();
-            output.append(housing);
-            output.append(":");
-            output.append(surface);
-            output.append(":");
-            output.append(residence);
-            output.append(":");
-            output.append(heating_string);
-            output.append(":");
-            output.append(population_string);
-
-            context.write(new Text(avg.toString()), new Text(output.toString()));
-        }
-    }
-
     /**
      * Split the interval between the min consumption and max consumption of the dataset into 4 parts.
      * Determine to which interval the input consumption belongs, and return its label.
@@ -287,9 +406,9 @@ public class EnedisByConsumption {
      * @return the label of the interval
      */
     public static String categoriseByConsoRange(Float conso) {
-        Float middle = (global_max_conso-global_min_conso)/2;
-        Float quarter = (middle-global_min_conso)/2;
-        Float three_quarter = (global_max_conso-quarter);
+        Float middle = (global_max_conso - global_min_conso)/2;
+        Float quarter = (middle - global_min_conso)/2;
+        Float three_quarter = global_max_conso - quarter;
 
         if (conso < quarter)
             return CONSOLABELS[0];
@@ -356,7 +475,7 @@ public class EnedisByConsumption {
 
     public static String categoriseByPopulationRange(Float population) {
         Float third = (global_max_population-global_min_population)/3;
-        Float two_thirds = global_min_population + third;
+        Float two_thirds = global_min_population + 2*third;
 
         DecimalFormat df = new DecimalFormat("##.##");
         df.setRoundingMode(RoundingMode.DOWN);
@@ -374,9 +493,9 @@ public class EnedisByConsumption {
     }
 
     public static void update_category_labels() {
-        Float middle = (global_max_conso-global_min_conso)/2;
-        Float quarter = (middle-global_min_conso)/2;
-        Float three_quarter = (global_max_conso-quarter);
+        Float middle = (global_max_conso - global_min_conso)/2;
+        Float quarter = (middle - global_min_conso)/2;
+        Float three_quarter = global_max_conso - quarter;
 
         DecimalFormat df = new DecimalFormat("##.##");
         df.setRoundingMode(RoundingMode.DOWN);
@@ -385,34 +504,6 @@ public class EnedisByConsumption {
         CONSOLABELS[1] = CONSOLABELS[1]+"(<"+df.format(middle)+"MWh)";
         CONSOLABELS[2] = CONSOLABELS[2]+"(<"+df.format(three_quarter)+"MWh)";
         CONSOLABELS[3] = CONSOLABELS[3]+"(>="+df.format(three_quarter)+"MWh)";
-    }
-
-    public static class Mapper2 extends Mapper<LongWritable, Text, Text, Text>{
-
-        public void map(LongWritable key, Text value, Context context)
-                throws IOException, InterruptedException {
-            Float conso = Float.parseFloat(value.toString().split("\t")[0]);
-            String[] values = value.toString().split("\t")[1].split(":");
-
-            String conso_category = categoriseByConsoRange(conso);
-            String housing_category = categoriseByCollectiveHousingRange(Float.parseFloat(values[0]));
-            String heating_category = categoriseByHeatingRange(Float.parseFloat(values[3]));
-            String population_category = categoriseByPopulationRange(Float.parseFloat(values[4]));
-
-            StringBuilder output = new StringBuilder();
-            output.append(housing_category);
-            output.append(":");
-            output.append(values[1]);
-            output.append(":");
-            output.append(values[2]);
-            output.append(":");
-            output.append(heating_category);
-            output.append(":");
-            output.append(population_category);
-
-            context.write(new Text(conso_category),new Text(output.toString()));
-        }
-
     }
 
     public static String getMaxCategory(Map<String, Integer> map){
@@ -428,58 +519,7 @@ public class EnedisByConsumption {
         return maxEntry.getKey();
     }
 
-    public static class Reducer2 extends Reducer<Text,Text,Text,Text> {
 
-        public void reduce(Text key, Iterable<Text> values,
-                           Context context
-        ) throws IOException, InterruptedException {
-
-            Map<String,Integer> surface_map = new HashMap<String, Integer>();
-            Map<String,Integer> residence_map = new HashMap<String, Integer>();
-            Map<String,Integer> heating_map = new HashMap<String, Integer>();
-            Map<String,Integer> housing_map = new HashMap<String, Integer>();
-            Map<String,Integer> population_map = new HashMap<String, Integer>();
-            int i;
-            for(i=0; i<SURFACELABELS.length; i++)
-                surface_map.put(SURFACELABELS[i],0);
-
-            for(i=0; i<RESIDENCYLABELS.length; i++)
-                residence_map.put(RESIDENCYLABELS[i],0);
-
-            for(i=0; i< HEATINGLABELS.length; i++)
-                heating_map.put(HEATINGLABELS[i],0);
-
-            for(i=0; i< COLLECTIVEHOUSINGLABELS.length; i++)
-                housing_map.put(COLLECTIVEHOUSINGLABELS[i],0);
-
-            for(i=0; i< POPULATIONLABELS.length; i++)
-                population_map.put(POPULATIONLABELS[i],0);
-
-            for (Text entry : values){
-                String[] value = entry.toString().split(":");
-                housing_map.put(value[0],housing_map.get(value[0]) + 1);
-                surface_map.put(value[1],surface_map.get(value[1]) + 1);
-                residence_map.put(value[2],residence_map.get(value[2]) + 1);
-                heating_map.put(value[3],heating_map.get(value[3]) + 1);
-                population_map.put(value[4],population_map.get(value[4]) + 1);
-            }
-
-            String max_surface_categ = getMaxCategory(surface_map);
-            String max_residence_categ = getMaxCategory(residence_map);
-            String max_heating_categ = getMaxCategory(heating_map);
-            String max_housing_categ = getMaxCategory(housing_map);
-            String max_population_categ = getMaxCategory(population_map);
-
-            context.write(key, new Text(
-                    "\n\t"
-                    + max_housing_categ + "\n\t"
-                    + max_surface_categ + "\n\t"
-                    + max_residence_categ + "\n\t"
-                    + max_heating_categ + "\n\t"
-                    + max_population_categ)
-            );
-        }
-    }
 
     public static void main(String[] args) throws Exception {
 
@@ -489,6 +529,28 @@ public class EnedisByConsumption {
         }
 
         Configuration conf = new Configuration();
+
+        Job job0 = new Job(conf, "PrepRun");
+        job0.setJarByClass(EnedisByConsumption.class);
+        job0.setOutputKeyClass(Text.class);
+        job0.setOutputValueClass(Text.class);
+        job0.setMapperClass(Mapper0.class);
+        job0.setReducerClass(Reducer0.class);
+
+        job0.setInputFormatClass(TextInputFormat.class);
+        job0.setOutputFormatClass(TextOutputFormat.class);
+
+        FileInputFormat.addInputPath(job0, new Path(args[0]));
+        FileOutputFormat.setOutputPath(job0, new Path(args[1]+"-minmax"));
+
+        job0.waitForCompletion(true);
+
+        System.out.println("----------------------------------------------");
+        System.out.println("END OF PREP JOB");
+        System.out.println("----------------------------------------------");
+
+        readMinMax(args[1]);
+        update_category_labels();
 
         Job job1 = new Job(conf, "FirstRun");
         job1.setJarByClass(EnedisByConsumption.class);
@@ -508,8 +570,6 @@ public class EnedisByConsumption {
         System.out.println("----------------------------------------------");
         System.out.println("END OF FIRST JOB");
         System.out.println("----------------------------------------------");
-
-        update_category_labels();
 
         Job job2 = new Job(conf, "SecondRun");
         job2.setJarByClass(EnedisByConsumption.class);
