@@ -12,7 +12,7 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class EnedisBySector {
 
-    public static String[] SECTORLABELS = {"Residentiel",
+    public static String[] SECTORLABELS = {"Résidentiel",
                                             "Professionnel",
                                             "Agriculture",
                                             "Industrie",
@@ -163,7 +163,7 @@ public class EnedisBySector {
             output_value.append(max_dpt);
             output_value.append(" (");
             output_value.append(max.toString());
-            output_value.append(" communes)");
+            output_value.append(")");
 
             context.write(key,new Text(output_value.toString()));
         }

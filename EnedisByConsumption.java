@@ -12,15 +12,19 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
-public class EnedisByConsumption {
+/**
+ *
+ * 2 Map-Reduce passes
+ *
+ * Map 1 : Get input line and extract info on consumption, surface, heating, collective housing, population
+ * Reduce 1 : Per category, calculate average per commune
+ *            -> Fix max and min values for consumption, heating, population
+ *            -> Use these values to dynamically split the corresponding categories
+ * Map 2 : Assign to consumption category and output the rest
+ * Reduce 2 : Per category, count values in each interval and get max
+ */
 
-    public static String[] SECTORLABELS =
-            {"Residentiel",
-                    "Professionnel",
-                    "Agriculture",
-                    "Industrie",
-                    "Tertiaire",
-                    "Autres"};
+public class EnedisByConsumption {
 
     public static String[] SURFACELABELS =
             {"Surfaces petites(<30m2)",
@@ -65,22 +69,6 @@ public class EnedisByConsumption {
     public static Float global_max_housing = Float.MIN_VALUE;
     public static Float global_min_population = Float.MAX_VALUE;
     public static Float global_max_population = Float.MIN_VALUE;
-
-    /**
-     * Return the Sector label for the sector with the highest consumption value
-     * @param avgs array of consumption values, one for each sector
-     * @return sector label
-     */
-    public static String getMaxSector(Float[] avgs) {
-        int maxIndex = 0;
-        for (int i = 1; i < avgs.length; i++) {
-            Float newnumber = avgs[i];
-            if ((newnumber > avgs[maxIndex])) {
-                maxIndex = i;
-            }
-        }
-        return SECTORLABELS[maxIndex];
-    }
 
     /**
      * Calculate the sum of the values for "Superficie des logements 80 à 100 m2" and
