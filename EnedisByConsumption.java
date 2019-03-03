@@ -63,14 +63,20 @@ public class EnedisByConsumption {
 
     public static final double EPSILON = 0.01;
 
-    public static Float global_min_conso = Float.MAX_VALUE;
-    public static Float global_max_conso = Float.MIN_VALUE;
-    public static Float global_min_heating = Float.MAX_VALUE;
-    public static Float global_max_heating = Float.MIN_VALUE;
-    public static Float global_min_housing = Float.MAX_VALUE;
-    public static Float global_max_housing = Float.MIN_VALUE;
-    public static Float global_min_population = Float.MAX_VALUE;
-    public static Float global_max_population = Float.MIN_VALUE;
+    public static Float global_25_conso = Float.MIN_VALUE;
+    public static Float global_50_conso = Float.MIN_VALUE;
+    public static Float global_75_conso = Float.MIN_VALUE;
+
+    public static Float global_25_heating = Float.MIN_VALUE;
+    public static Float global_50_heating = Float.MIN_VALUE;
+    public static Float global_75_heating = Float.MIN_VALUE;
+
+    public static Float global_25_housing = Float.MIN_VALUE;
+    public static Float global_50_housing = Float.MIN_VALUE;
+    public static Float global_75_housing = Float.MIN_VALUE;
+
+    public static Float global_33_population = Float.MIN_VALUE;
+    public static Float global_66_population = Float.MIN_VALUE;
 
     public static class ValuesMapper extends Mapper<LongWritable, Text, Text, Text>{
 
@@ -85,7 +91,7 @@ public class EnedisByConsumption {
             context.write(new Text("population"), new Text(values[4]));
         }
     }
-    public static class MinMaxMapper extends Reducer<Text,Text,Text,Text> {
+    public static class MinMaxReducer extends Reducer<Text,Text,Text,Text> {
 
         public void reduce(Text key, Iterable<Text> values,
                            Context context
@@ -100,8 +106,20 @@ public class EnedisByConsumption {
 
             Float min = Collections.min(values_list);
             Float max = Collections.max(values_list);
+            Collections.sort(values_list);
 
-            context.write(key, new Text(min+"\t"+max));
+            if (Objects.equals(key.toString(),"population")) {
+                int i33 = values_list.size()/3;
+                Float pop33 = values_list.get(i33);
+                Float pop66 = values_list.get(i33*2);
+                context.write(key, new Text(min+"\t"+max+"\t"+pop33+"\t"+pop66));
+            } else {
+                int i25 = values_list.size()/4;
+                Float val25 = values_list.get(i25);
+                Float val50 = values_list.get(i25*2);
+                Float val75 = values_list.get(i25*2 + i25);
+                context.write(key, new Text(min+"\t"+max+"\t"+val25+"\t"+val50+"\t"+val75));
+            }
         }
     }
     public static class Mapper1 extends Mapper<LongWritable, Text, Text, Text>{
@@ -295,17 +313,20 @@ public class EnedisByConsumption {
             while (input.hasNextLine()) {
                 String[] tokens = input.nextLine().split("\t");
                 if (Objects.equals(tokens[0],"housing")) {
-                    global_min_housing = Float.parseFloat(tokens[1]);
-                    global_max_housing = Float.parseFloat(tokens[2]);
+                    global_25_housing = Float.parseFloat(tokens[3]);
+                    global_50_housing = Float.parseFloat(tokens[4]);
+                    global_75_housing = Float.parseFloat(tokens[5]);
                 } else if (Objects.equals(tokens[0],"conso")) {
-                    global_min_conso = Float.parseFloat(tokens[1]);
-                    global_max_conso = Float.parseFloat(tokens[2]);
+                    global_25_conso = Float.parseFloat(tokens[3]);
+                    global_50_conso = Float.parseFloat(tokens[4]);
+                    global_75_conso = Float.parseFloat(tokens[5]);
                 } else if (Objects.equals(tokens[0],"heating")) {
-                    global_min_heating = Float.parseFloat(tokens[1]);
-                    global_max_heating = Float.parseFloat(tokens[2]);
+                    global_25_heating = Float.parseFloat(tokens[3]);
+                    global_50_heating = Float.parseFloat(tokens[4]);
+                    global_75_heating = Float.parseFloat(tokens[5]);
                 } else {
-                    global_min_population = Float.parseFloat(tokens[1]);
-                    global_max_population = Float.parseFloat(tokens[2]);
+                    global_33_population = Float.parseFloat(tokens[3]);
+                    global_66_population = Float.parseFloat(tokens[4]);
                 }
             }
             input.close();
@@ -397,15 +418,11 @@ public class EnedisByConsumption {
      * @return the label of the interval
      */
     public static String categoriseByConsoRange(Float conso) {
-        Float middle = (global_max_conso - global_min_conso)/2;
-        Float quarter = (middle - global_min_conso)/2;
-        Float three_quarter = global_max_conso - quarter;
-
-        if (conso < quarter)
+        if (conso < global_25_conso)
             return CONSOLABELS[0];
-        else if (conso < middle)
+        else if (conso < global_50_conso)
             return CONSOLABELS[1];
-        else if (conso < three_quarter)
+        else if (conso < global_75_conso)
             return CONSOLABELS[2];
         else
             return CONSOLABELS[3];
@@ -419,88 +436,62 @@ public class EnedisByConsumption {
      * @return the label of the interval
      */
     public static String categoriseByHeatingRange(Float heating) {
-        Float middle = (global_max_heating-global_min_heating)/2;
-        Float quarter = (middle - global_min_heating)/2;
-        Float three_quarter = (global_max_heating-quarter);
 
-        DecimalFormat df = new DecimalFormat("##.##");
-        df.setRoundingMode(RoundingMode.DOWN);
-
-        if (heating < quarter) {
-            HEATINGLABELS[0] = "Taux chauff. électr. très bas(<" + df.format(quarter) + "%)";
+        if (heating < global_25_heating) {
             return HEATINGLABELS[0];
-        } else if (heating < middle) {
-            HEATINGLABELS[1] = "Taux chauff. électr. bas(<" + df.format(middle) + "%)";
+        } else if (heating < global_50_heating) {
             return HEATINGLABELS[1];
-        } else if (heating < three_quarter) {
-            HEATINGLABELS[2] = "Taux chauff. électr. moyen(<"+df.format(three_quarter)+"%)";
+        } else if (heating < global_75_heating) {
             return HEATINGLABELS[2];
         } else {
-            HEATINGLABELS[3] = "Taux chauff. électr. élevé(>="+df.format(three_quarter)+"%)";
             return HEATINGLABELS[3];
         }
     }
 
     public static String categoriseByCollectiveHousingRange(Float housing) {
-        Float middle = (global_max_housing-global_min_housing)/2;
-        Float quarter = (middle-global_min_housing)/2;
-        Float three_quarter = (global_max_housing-quarter);
-
-        System.out.println("min:"+global_min_housing);
-        System.out.println("max:"+global_max_housing);
-        System.out.println("middle:"+middle);
-        System.out.println("quarter:"+quarter);
-        System.out.println("three_quarter:"+three_quarter);
-
-        DecimalFormat df = new DecimalFormat("##.##");
-        df.setRoundingMode(RoundingMode.DOWN);
-
-        if (housing < quarter) {
-            COLLECTIVEHOUSINGLABELS[0] = "Taux logements coll. très bas(<" + df.format(quarter) + "%)";
+        if (housing < global_25_housing) {
             return COLLECTIVEHOUSINGLABELS[0];
-        } else if (housing < middle) {
-            COLLECTIVEHOUSINGLABELS[1] = "Taux logements coll. bas(<" + df.format(middle) + "%)";
+        } else if (housing < global_50_housing) {
             return COLLECTIVEHOUSINGLABELS[1];
-        } else if (housing < three_quarter) {
-            COLLECTIVEHOUSINGLABELS[2] = "Taux logements coll. moyen(<" + df.format(three_quarter) + "%)";
+        } else if (housing < global_75_housing) {
             return COLLECTIVEHOUSINGLABELS[2];
         } else {
-            COLLECTIVEHOUSINGLABELS[3] = "Taux logements coll. élevé(>=" + df.format(three_quarter) + "%)";
             return COLLECTIVEHOUSINGLABELS[3];
         }
     }
 
     public static String categoriseByPopulationRange(Float population) {
-        Float third = (global_max_population-global_min_population)/3;
-        Float two_thirds = global_min_population + 2*third;
-
-        DecimalFormat df = new DecimalFormat("##.##");
-        df.setRoundingMode(RoundingMode.DOWN);
-
-        if (population < third) {
-            POPULATIONLABELS[0] = "Nb habitants bas(<" + df.format(third) + ")";
+        if (population < global_33_population) {
             return POPULATIONLABELS[0];
-        } else if (population < two_thirds) {
-            POPULATIONLABELS[1] = "Nb habitants moyen(<" + df.format(two_thirds) + ")";
+        } else if (population < global_66_population) {
             return POPULATIONLABELS[1];
         } else {
-            POPULATIONLABELS[2] = "Nb habitants élevé(>=" + df.format(two_thirds) + ")";
             return POPULATIONLABELS[2];
         }
     }
 
     public static void update_category_labels() {
-        Float middle = (global_max_conso - global_min_conso)/2;
-        Float quarter = (middle - global_min_conso)/2;
-        Float three_quarter = global_max_conso - quarter;
-
         DecimalFormat df = new DecimalFormat("##.##");
         df.setRoundingMode(RoundingMode.DOWN);
 
-        CONSOLABELS[0] = CONSOLABELS[0]+"(<"+df.format(quarter)+"MWh)";
-        CONSOLABELS[1] = CONSOLABELS[1]+"(<"+df.format(middle)+"MWh)";
-        CONSOLABELS[2] = CONSOLABELS[2]+"(<"+df.format(three_quarter)+"MWh)";
-        CONSOLABELS[3] = CONSOLABELS[3]+"(>="+df.format(three_quarter)+"MWh)";
+        CONSOLABELS[0] = CONSOLABELS[0]+"(<"+df.format(global_25_conso)+"MWh)";
+        CONSOLABELS[1] = CONSOLABELS[1]+"(<"+df.format(global_50_conso)+"MWh)";
+        CONSOLABELS[2] = CONSOLABELS[2]+"(<"+df.format(global_75_conso)+"MWh)";
+        CONSOLABELS[3] = CONSOLABELS[3]+"(>="+df.format(global_75_conso)+"MWh)";
+
+        COLLECTIVEHOUSINGLABELS[0] = "Taux logements coll. très bas(<" + df.format(global_25_housing) + "%)";
+        COLLECTIVEHOUSINGLABELS[1] = "Taux logements coll. bas(<" + df.format(global_50_housing) + "%)";
+        COLLECTIVEHOUSINGLABELS[2] = "Taux logements coll. moyen(<" + df.format(global_75_housing) + "%)";
+        COLLECTIVEHOUSINGLABELS[3] = "Taux logements coll. élevé(>=" + df.format(global_75_housing) + "%)";
+
+        HEATINGLABELS[0] = "Taux chauff. électr. très bas(<" + df.format(global_25_heating) + "%)";
+        HEATINGLABELS[1] = "Taux chauff. électr. bas(<" + df.format(global_50_heating) + "%)";
+        HEATINGLABELS[2] = "Taux chauff. électr. moyen(<"+df.format(global_75_heating)+"%)";
+        HEATINGLABELS[3] = "Taux chauff. électr. élevé(>="+df.format(global_75_heating)+"%)";
+
+        POPULATIONLABELS[0] = "Nb habitants bas(<" + df.format(global_33_population) + ")";
+        POPULATIONLABELS[1] = "Nb habitants moyen(<" + df.format(global_66_population) + ")";
+        POPULATIONLABELS[2] = "Nb habitants élevé(>=" + df.format(global_66_population) + ")";
     }
 
     public static String getMaxCategory(Map<String, Integer> map){
@@ -549,7 +540,7 @@ public class EnedisByConsumption {
         job1.setOutputKeyClass(Text.class);
         job1.setOutputValueClass(Text.class);
         job1.setMapperClass(ValuesMapper.class);
-        job1.setReducerClass(MinMaxMapper.class);
+        job1.setReducerClass(MinMaxReducer.class);
         job1.setInputFormatClass(TextInputFormat.class);
         job1.setOutputFormatClass(TextOutputFormat.class);
 
