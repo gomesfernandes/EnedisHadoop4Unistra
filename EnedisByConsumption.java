@@ -35,7 +35,7 @@ public class EnedisByConsumption {
 
     public static String[] RESIDENCYLABELS =
             {"Résidences anciennes(<=1970)",
-            "Résidences âge moyen(<=2010)",
+            "Résidences âge moyen(>1970, <=2010)",
             "Résidences récentes(>2010)"};
 
     public static String[] CONSOLABELS =
@@ -475,22 +475,29 @@ public class EnedisByConsumption {
         df.setRoundingMode(RoundingMode.DOWN);
 
         CONSOLABELS[0] = CONSOLABELS[0]+"(<"+df.format(global_25_conso)+"MWh)";
-        CONSOLABELS[1] = CONSOLABELS[1]+"(<"+df.format(global_50_conso)+"MWh)";
-        CONSOLABELS[2] = CONSOLABELS[2]+"(<"+df.format(global_75_conso)+"MWh)";
+        CONSOLABELS[1] = CONSOLABELS[1]+"(>="+df.format(global_25_conso)
+                                        +",<"+df.format(global_50_conso)+"MWh)";
+        CONSOLABELS[2] = CONSOLABELS[2]+"(>="+df.format(global_50_conso)
+                                        +",<"+df.format(global_75_conso)+"MWh)";
         CONSOLABELS[3] = CONSOLABELS[3]+"(>="+df.format(global_75_conso)+"MWh)";
 
         COLLECTIVEHOUSINGLABELS[0] = "Taux logements coll. très bas(<" + df.format(global_25_housing) + "%)";
-        COLLECTIVEHOUSINGLABELS[1] = "Taux logements coll. bas(<" + df.format(global_50_housing) + "%)";
-        COLLECTIVEHOUSINGLABELS[2] = "Taux logements coll. moyen(<" + df.format(global_75_housing) + "%)";
+        COLLECTIVEHOUSINGLABELS[1] = "Taux logements coll. bas(>=" +  df.format(global_25_housing)
+                                    + ",<" + df.format(global_50_housing) + "%)";
+        COLLECTIVEHOUSINGLABELS[2] = "Taux logements coll. moyen(>=" + df.format(global_50_housing)
+                                    + ",<" + df.format(global_75_housing) + "%)";
         COLLECTIVEHOUSINGLABELS[3] = "Taux logements coll. élevé(>=" + df.format(global_75_housing) + "%)";
 
         HEATINGLABELS[0] = "Taux chauff. électr. très bas(<" + df.format(global_25_heating) + "%)";
-        HEATINGLABELS[1] = "Taux chauff. électr. bas(<" + df.format(global_50_heating) + "%)";
-        HEATINGLABELS[2] = "Taux chauff. électr. moyen(<"+df.format(global_75_heating)+"%)";
+        HEATINGLABELS[1] = "Taux chauff. électr. bas(>=" + df.format(global_25_heating)
+                                + ",<" + df.format(global_50_heating) + "%)";
+        HEATINGLABELS[2] = "Taux chauff. électr. moyen(>=" + df.format(global_50_heating)
+                                 + ",<" +df.format(global_75_heating)+"%)";
         HEATINGLABELS[3] = "Taux chauff. électr. élevé(>="+df.format(global_75_heating)+"%)";
 
         POPULATIONLABELS[0] = "Nb habitants bas(<" + df.format(global_33_population) + ")";
-        POPULATIONLABELS[1] = "Nb habitants moyen(<" + df.format(global_66_population) + ")";
+        POPULATIONLABELS[1] = "Nb habitants moyen(>="+df.format(global_33_population)+
+                                                ",<" + df.format(global_66_population) + ")";
         POPULATIONLABELS[2] = "Nb habitants élevé(>=" + df.format(global_66_population) + ")";
     }
 
