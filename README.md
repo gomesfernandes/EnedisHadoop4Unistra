@@ -5,6 +5,11 @@ University of Strasbourg, M2 ILC 2019
 Developers :
 GOMES FERNANDES Caty, HARTMEYER Vincent
 
+
+**Please download the dataset from this link**: https://drive.google.com/file/d/11tEcNLQve1IJiWfkCie_zjKEHcNbli9Q/view?usp=sharing 
+
+Original link: https://data.enedis.fr/explore/dataset/consommation-electrique-par-secteur-dactivite-commune/information/?sort=annee
+
 ### Quick run 
 
 `make` : Compile all java classes
@@ -13,7 +18,7 @@ GOMES FERNANDES Caty, HARTMEYER Vincent
 
 `make clean` : Remove existing outputs, classes and jar
 
-### Seperate compilation
+### Seperate compilation and run
 
 The project is split into two parts that answer two different questions using the same dataset:
 * The first question distinguishes between the types of sectors and searches for the department with the most influence on the consumption for each sector.
