@@ -6,7 +6,7 @@ Developers :
 GOMES FERNANDES Caty, HARTMEYER Vincent
 
 
-Step 1: ** download the dataset using this link**: https://drive.google.com/file/d/11tEcNLQve1IJiWfkCie_zjKEHcNbli9Q/view?usp=sharing 
+Step 1: **download the dataset using this link**: https://drive.google.com/file/d/11tEcNLQve1IJiWfkCie_zjKEHcNbli9Q/view?usp=sharing 
 
 Original link: https://data.enedis.fr/explore/dataset/consommation-electrique-par-secteur-dactivite-commune/information/?sort=annee
 
